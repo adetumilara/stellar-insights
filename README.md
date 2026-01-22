@@ -171,36 +171,131 @@ Ndii Intelligence Dashboard provides **deep insights into Stellar payment networ
 
 ### Prerequisites
 
+**For Frontend:**
 - Node.js 18+ ([install with nvm](https://github.com/nvm-sh/nvm))
-- Bun or npm/yarn
+- npm or yarn
 
-### Quick Start
+**For Backend (Rust Analytics Engine):**
+- Rust 1.70+ ([install](https://rustup.rs/))
+- PostgreSQL 14+ (or Docker)
+- Cargo (comes with Rust)
+
+### Full-Stack Setup
+
+This project has **two parts that run independently**:
+
+#### 1️⃣ Start PostgreSQL Database
 
 ```bash
-# Clone the repository
-git clone https://github.com/Ndifreke000/stellar-insights.git
-cd stellar-insights
+# Option A: Using Docker
+docker run --name stellar-postgres \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=stellar_insights \
+  -p 5432:5432 \
+  -d postgres:14
+
+# Option B: Using local PostgreSQL
+# Make sure PostgreSQL is running and create the database:
+# createdb stellar_insights
+```
+
+#### 2️⃣ Build & Run Backend (Rust)
+
+```bash
+cd backend
+
+# Run the server (migrations run automatically)
+cargo run
+```
+
+You should see: `Server starting on 127.0.0.1:8080`
+
+Test it:
+```bash
+curl http://localhost:8080/health
+```
+
+#### 3️⃣ Setup & Run Frontend (React + Next.js)
+
+```bash
+# From the root directory
+cd frontend
 
 # Install dependencies
-bun install
+npm install
 
 # Start development server
-bun dev
+npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+The app will be available at `http://localhost:3000`
 
-### Available Commands
+### Frontend Commands
 
 ```bash
-bun dev              # Start dev server with HMR
-bun run build        # Production build
-bun run build:dev    # Development build
-bun run preview      # Preview production build
-bun run test         # Run tests
-bun run test:watch   # Watch mode testing
-bun run lint         # Code quality check
+npm run dev          # Start dev server
+npm run build        # Production build
+npm start            # Start production server
+npm run lint         # Code quality check
 ```
+
+### Backend Commands
+
+```bash
+cd backend
+
+cargo run            # Run the server
+cargo build          # Build binary
+cargo test           # Run tests
+cargo test -- --nocapture  # Tests with output
+```
+
+**⚠️ Important**: Both backend and frontend need to run simultaneously for the full app to work!
+
+### Troubleshooting
+
+**Backend won't build (Rust errors)**
+```bash
+cd backend
+rustup update        # Update Rust toolchain
+cargo clean          # Clean build artifacts
+cargo build          # Rebuild
+```
+
+**Database connection failed**
+```bash
+# Verify PostgreSQL is running
+docker ps | grep stellar-postgres
+
+# Check backend logs
+# Error should show in terminal output
+
+# Reset database if needed
+docker exec -it stellar-postgres \
+  psql -U postgres -d stellar_insights -c \
+  "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+```
+
+**Port 8080 already in use (backend)**
+```bash
+# Check what's using port 8080
+lsof -i :8080
+
+# Change port in backend/.env
+echo "SERVER_PORT=8081" >> backend/.env
+```
+
+**Port 3000 already in use (frontend)**
+```bash
+# Next.js will prompt for a different port
+# Or specify it manually
+npm run dev -- -p 3001
+```
+
+**Frontend can't connect to backend**
+- Make sure backend is running: `curl http://localhost:8080/health`
+- Check if frontend API calls use correct URL (`http://localhost:8080`)
+- Check browser console for CORS errors
 
 ---
 
