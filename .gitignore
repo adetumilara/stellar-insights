@@ -1,2 +1,6 @@
 backend/target/
 Cargo.lock
+node_modules/
+.next/
+dist/
+build/
