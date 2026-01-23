@@ -7,11 +7,12 @@ import {
   Search,
   Filter,
   Loader,
-  ArrowRight,
   Droplets,
   CheckCircle2,
   AlertCircle,
+  ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 import {
   getCorridors,
   generateMockCorridorData,
@@ -40,20 +41,20 @@ export default function CorridorsPage() {
           // Generate mock corridors
           const mockCorridors: CorridorMetrics[] = [
             {
-              ...generateMockCorridorData("corridor-1").corridor,
-              id: "corridor-1",
+              ...generateMockCorridorData("USDC-PHP").corridor,
+              id: "USDC-PHP",
               source_asset: "USDC",
               destination_asset: "PHP",
             },
             {
-              ...generateMockCorridorData("corridor-2").corridor,
-              id: "corridor-2",
+              ...generateMockCorridorData("USDC-JPY").corridor,
+              id: "USDC-JPY",
               source_asset: "USDC",
               destination_asset: "JPY",
             },
             {
-              ...generateMockCorridorData("corridor-3").corridor,
-              id: "corridor-3",
+              ...generateMockCorridorData("USDC-INR").corridor,
+              id: "USDC-INR",
               source_asset: "USDC",
               destination_asset: "INR",
               success_rate: 95.2,
@@ -70,8 +71,8 @@ export default function CorridorsPage() {
               health_score: 96,
             },
             {
-              ...generateMockCorridorData("corridor-4").corridor,
-              id: "corridor-4",
+              ...generateMockCorridorData("USDC-KES").corridor,
+              id: "USDC-KES",
               source_asset: "USDC",
               destination_asset: "KES",
               success_rate: 81.3,
@@ -88,8 +89,8 @@ export default function CorridorsPage() {
               health_score: 72,
             },
             {
-              ...generateMockCorridorData("corridor-5").corridor,
-              id: "corridor-5",
+              ...generateMockCorridorData("USDC-EUR").corridor,
+              id: "USDC-EUR",
               source_asset: "USDC",
               destination_asset: "EUR",
               success_rate: 97.8,
@@ -106,8 +107,8 @@ export default function CorridorsPage() {
               health_score: 98,
             },
             {
-              ...generateMockCorridorData("corridor-6").corridor,
-              id: "corridor-6",
+              ...generateMockCorridorData("USDC-GBP").corridor,
+              id: "USDC-GBP",
               source_asset: "USDC",
               destination_asset: "GBP",
               success_rate: 94.1,
@@ -238,9 +239,9 @@ export default function CorridorsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCorridors.map((corridor) => (
-              <button
+              <Link
                 key={corridor.id}
-                onClick={() => router.push(`/corridors/${corridor.id}`)}
+                href={`/corridors/${corridor.id}`}
                 className="group bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6 hover:border-blue-500 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 text-left cursor-pointer"
               >
                 {/* Header */}
@@ -339,7 +340,7 @@ export default function CorridorsPage() {
                     />
                   </div>
                 </div>
-              </button>
+              </Link>
             ))}
           </div>
         )}
