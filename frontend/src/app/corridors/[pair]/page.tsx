@@ -13,6 +13,8 @@ import {
   Clock,
   BarChart3,
   Loader,
+  ChevronRight,
+  Home,
 } from "lucide-react";
 import {
   getCorridorDetail,
@@ -23,13 +25,16 @@ import {
   SuccessRateChart,
   LatencyDistributionChart,
   LiquidityTrendChart,
+  VolumeTrendChart,
+  SlippageTrendChart,
 } from "@/components/corridor-charts";
 import { MainLayout } from "@/components/layout";
+import Link from "next/link";
 
 export default function CorridorDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const corridorId = params.id as string;
+  const corridorPair = params.pair as string;
 
   const [data, setData] = useState<CorridorDetailData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,12 +46,12 @@ export default function CorridorDetailPage() {
         setLoading(true);
         // Try to fetch from API first
         try {
-          const result = await getCorridorDetail(corridorId);
+          const result = await getCorridorDetail(corridorPair);
           setData(result);
         } catch (apiError) {
           console.log("API not available, using mock data");
           // Fallback to mock data
-          const mockData = generateMockCorridorData(corridorId);
+          const mockData = generateMockCorridorData(corridorPair);
           setData(mockData);
         }
       } catch (err) {
@@ -57,10 +62,10 @@ export default function CorridorDetailPage() {
       }
     }
 
-    if (corridorId) {
+    if (corridorPair) {
       fetchData();
     }
-  }, [corridorId]);
+  }, [corridorPair]);
 
   if (loading) {
     return (
@@ -117,13 +122,35 @@ export default function CorridorDetailPage() {
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-6 overflow-x-auto whitespace-nowrap pb-2">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            <Home className="w-4 h-4" />
+            Dashboard
+          </Link>
+          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+          <Link
+            href="/corridors"
+            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            Corridors
+          </Link>
+          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {corridor.source_asset} → {corridor.destination_asset}
+          </span>
+        </nav>
+
         {/* Page Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push("/corridors")}
-            className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors font-medium mb-4"
+            className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors font-medium mb-4 group"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
             Back to Corridors
           </button>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -131,17 +158,19 @@ export default function CorridorDetailPage() {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                 {corridor.source_asset} → {corridor.destination_asset}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm">
-                Corridor ID: {corridor.id}
+              <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm font-mono">
+                Pair: {corridorPair}
               </p>
             </div>
-            <div className="text-right">
-              <div className={`text-4xl font-bold ${healthColor}`}>
-                {corridor.health_score.toFixed(1)}
+            <div className="flex items-center gap-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700">
+              <div className="text-right">
+                <div className={`text-3xl font-bold ${healthColor}`}>
+                  {corridor.health_score.toFixed(1)}
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">
+                  Health Score
+                </p>
               </div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Health Score
-              </p>
             </div>
           </div>
         </div>
@@ -219,20 +248,30 @@ export default function CorridorDetailPage() {
         </div>
 
         {/* Charts Section */}
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Success Rate Chart */}
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6">
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
             <SuccessRateChart data={data.historical_success_rate} />
           </div>
 
-          {/* Two-column layout for latency and liquidity */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6">
-              <LatencyDistributionChart data={data.latency_distribution} />
-            </div>
-            <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6">
-              <LiquidityTrendChart data={data.liquidity_trends} />
-            </div>
+          {/* Volume Chart */}
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
+            <VolumeTrendChart data={data.historical_volume} />
+          </div>
+
+          {/* Slippage Chart */}
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
+            <SlippageTrendChart data={data.historical_slippage} />
+          </div>
+
+          {/* Latency Distribution */}
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6 shadow-sm">
+            <LatencyDistributionChart data={data.latency_distribution} />
+          </div>
+
+          {/* Liquidity Trends */}
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6 shadow-sm lg:col-span-2">
+            <LiquidityTrendChart data={data.liquidity_trends} />
           </div>
         </div>
 
@@ -245,9 +284,9 @@ export default function CorridorDetailPage() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {data.related_corridors.map((related: any) => (
-                <button
+                <Link
                   key={related.id}
-                  onClick={() => router.push(`/corridors/${related.id}`)}
+                  href={`/corridors/${related.id}`}
                   className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-500 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 text-left cursor-pointer"
                 >
                   <div className="flex justify-between items-start mb-3 gap-2">
@@ -281,7 +320,7 @@ export default function CorridorDetailPage() {
                       </p>
                     </div>
                   </div>
-                </button>
+                </Link>
               ))}
             </div>
           </div>
