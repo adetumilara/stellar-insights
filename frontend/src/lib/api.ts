@@ -5,6 +5,98 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
+/**
+ * Custom error class for API responses
+ */
+export class ApiError extends Error {
+  status: number;
+  data: any;
+
+  constructor(status: number, message: string, data?: any) {
+    super(message);
+    this.status = status;
+    this.data = data;
+    this.name = 'ApiError';
+  }
+}
+
+/**
+ * Shared fetch wrapper with consistent error handling and types
+ */
+async function fetchApi<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        // Fallback if response is not JSON
+        errorData = { message: response.statusText };
+      }
+      throw new ApiError(
+        response.status,
+        errorData.message || `API error: ${response.status}`,
+        errorData
+      );
+    }
+
+    // Handle 204 No Content
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+    console.error(`API Request Error [${url}]:`, error);
+    throw new ApiError(0, message);
+  }
+}
+
+/**
+ * API client object with common HTTP methods
+ */
+export const api = {
+  get: <T>(endpoint: string, options?: RequestInit) =>
+    fetchApi<T>(endpoint, { ...options, method: 'GET' }),
+
+  post: <T>(endpoint: string, body?: any, options?: RequestInit) =>
+    fetchApi<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined
+    }),
+
+  put: <T>(endpoint: string, body?: any, options?: RequestInit) =>
+    fetchApi<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined
+    }),
+
+  delete: <T>(endpoint: string, options?: RequestInit) =>
+    fetchApi<T>(endpoint, { ...options, method: 'DELETE' }),
+};
+
 export interface CorridorMetrics {
   id: string;
   source_asset: string;
@@ -74,76 +166,28 @@ export interface CorridorDetailData {
 export async function getCorridorDetail(
   corridorId: string
 ): Promise<CorridorDetailData> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/corridors/${corridorId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error(`Error fetching corridor detail for ${corridorId}:`, error);
-    throw error;
-  }
+  return api.get<CorridorDetailData>(`/corridors/${corridorId}`);
 }
 
 /**
  * Fetch all corridors (for listing and navigation)
  */
 export async function getCorridors(): Promise<CorridorMetrics[]> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/corridors`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching corridors:', error);
-    throw error;
-  }
+  return api.get<CorridorMetrics[]>('/corridors');
 }
 
 /**
  * Fetch all anchors with their metrics
  */
 export async function getAnchors(limit?: number, offset?: number): Promise<AnchorsResponse> {
-  try {
-    const params = new URLSearchParams();
-    if (limit !== undefined) params.append('limit', limit.toString());
-    if (offset !== undefined) params.append('offset', offset.toString());
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.append('limit', limit.toString());
+  if (offset !== undefined) params.append('offset', offset.toString());
 
-    const queryString = params.toString();
-    const url = `${API_BASE_URL}/anchors${queryString ? `?${queryString}` : ''}`;
+  const queryString = params.toString();
+  const endpoint = `/anchors${queryString ? `?${queryString}` : ''}`;
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching anchors:', error);
-    throw error;
-  }
+  return api.get<AnchorsResponse>(endpoint);
 }
 
 /**
