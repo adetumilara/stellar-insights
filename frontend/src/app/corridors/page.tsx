@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, Suspense } from "react";
 import {
   TrendingUp,
   Search,
@@ -21,15 +21,7 @@ import { SkeletonCorridorCard } from "@/components/ui/Skeleton";
 import { usePagination } from "@/hooks/usePagination";
 import { DataTablePagination } from "@/components/ui/DataTablePagination";
 
-export default function CorridorsPage() {
-  return (
-    <Suspense>
-      <CorridorsContent />
-    </Suspense>
-  );
-}
-
-function CorridorsContent() {
+function CorridorsPageContent() {
   const [corridors, setCorridors] = useState<CorridorMetrics[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,10 +29,35 @@ function CorridorsContent() {
     "success_rate" | "health_score" | "liquidity"
   >("health_score");
 
+  const filteredCorridors = useMemo(() => {
+    return corridors
+      .filter(
+        (c) =>
+          c.source_asset.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.destination_asset.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.id.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+      .sort((a, b) => {
+        switch (sortBy) {
+          case "success_rate":
+            return b.success_rate - a.success_rate;
+          case "liquidity":
+            return b.liquidity_depth_usd - a.liquidity_depth_usd;
+          case "health_score":
+          default:
+            return b.health_score - a.health_score;
+        }
+      });
+  }, [corridors, searchTerm, sortBy]);
+
   const {
+    currentPage,
+    pageSize,
+    onPageChange,
+    onPageSizeChange,
     startIndex,
     endIndex,
-  } = usePagination(0);
+  } = usePagination(filteredCorridors.length);
 
   useEffect(() => {
     async function fetchCorridors() {
@@ -150,25 +167,7 @@ function CorridorsContent() {
     fetchCorridors();
   }, []);
 
-  // Filter and sort corridors
-  const filteredCorridors = corridors
-    .filter(
-      (c) =>
-        c.source_asset.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.destination_asset.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.id.toLowerCase().includes(searchTerm.toLowerCase()),
-    )
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "success_rate":
-          return b.success_rate - a.success_rate;
-        case "liquidity":
-          return b.liquidity_depth_usd - a.liquidity_depth_usd;
-        case "health_score":
-        default:
-          return b.health_score - a.health_score;
-      }
-    });
+  const paginatedCorridors = filteredCorridors.slice(startIndex, endIndex);
 
   const paginatedCorridors = filteredCorridors.slice(startIndex, endIndex);
 
@@ -371,10 +370,10 @@ function CorridorsContent() {
 
             <DataTablePagination
               totalItems={filteredCorridors.length}
-              pageSize={finalPageSize}
-              currentPage={finalCurrentPage}
-              onPageChange={finalOnPageChange}
-              onPageSizeChange={finalOnPageSizeChange}
+              pageSize={pageSize}
+              currentPage={currentPage}
+              onPageChange={onPageChange}
+              onPageSizeChange={onPageSizeChange}
             />
           </div>
         )}
@@ -390,5 +389,19 @@ function CorridorsContent() {
         </div>
       </div>
     </MainLayout>
+  );
+}
+
+export default function CorridorsPage() {
+  return (
+    <Suspense fallback={
+      <MainLayout>
+        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto flex items-center justify-center h-64">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </MainLayout>
+    }>
+      <CorridorsPageContent />
+    </Suspense>
   );
 }

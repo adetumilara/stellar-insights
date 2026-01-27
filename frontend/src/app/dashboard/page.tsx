@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import { SkeletonMetricsCard, SkeletonChart } from "@/components/ui/Skeleton";
-import { KpiCard } from "@/components/dashboard/KpiCard";
-import { SettlementSpeedCard } from "@/components/dashboard/SettlementSpeedCard";
-import { LiquidityDepthCard } from "@/components/dashboard/LiquidityDepthCard";
-import { CorridorHealthCard } from "@/components/dashboard/CorridorHealthCard";
-import { TopAssetsCard } from "@/components/dashboard/TopAssetsCard";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
+import { SkeletonMetricsCard } from '@/components/ui/Skeleton'
+import { KpiCard } from '@/components/dashboard/KpiCard'
+import { SettlementSpeedCard } from '@/components/dashboard/SettlementSpeedCard'
+import { LiquidityDepthCard } from '@/components/dashboard/LiquidityDepthCard'
+import { CorridorHealthCard } from '@/components/dashboard/CorridorHealthCard'
+import { TopAssetsCard } from '@/components/dashboard/TopAssetsCard'
 
 type Corridor = {
   id: string;
@@ -34,7 +34,7 @@ type DashboardData = {
   timeseries: TimePoint[];
 };
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,5 +109,17 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-sky-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    }>
+      <DashboardPageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
   Anchor,
   Search,
@@ -114,15 +114,7 @@ const generateMockHistoricalData = (baseScore: number) => {
   return data;
 };
 
-export default function AnchorsPage() {
-  return (
-    <Suspense>
-      <AnchorsContent />
-    </Suspense>
-  );
-}
-
-function AnchorsContent() {
+function AnchorsPageContent() {
   const [anchors, setAnchors] = useState<AnchorMetrics[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -130,6 +122,47 @@ function AnchorsContent() {
     "reliability" | "transactions" | "failure_rate"
   >("reliability");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  const filteredAndSortedAnchors = useMemo(() => {
+    return anchors
+      .filter(
+        (anchor) =>
+          anchor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          anchor.stellar_account.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+      .sort((a, b) => {
+        let aValue, bValue;
+
+        switch (sortBy) {
+          case "reliability":
+            aValue = a.reliability_score;
+            bValue = b.reliability_score;
+            break;
+          case "transactions":
+            aValue = a.total_transactions;
+            bValue = b.total_transactions;
+            break;
+          case "failure_rate":
+            aValue = a.failure_rate;
+            bValue = b.failure_rate;
+            break;
+          default:
+            aValue = a.reliability_score;
+            bValue = b.reliability_score;
+        }
+
+        return sortOrder === "desc" ? bValue - aValue : aValue - bValue;
+      });
+  }, [anchors, searchTerm, sortBy, sortOrder]);
+
+  const {
+    currentPage,
+    pageSize,
+    onPageChange,
+    onPageSizeChange,
+    startIndex,
+    endIndex,
+  } = usePagination(filteredAndSortedAnchors.length);
 
   useEffect(() => {
     const fetchAnchors = async () => {
@@ -154,35 +187,7 @@ function AnchorsContent() {
     fetchAnchors();
   }, []);
 
-  const filteredAndSortedAnchors = anchors
-    .filter(
-      (anchor) =>
-        anchor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        anchor.stellar_account.toLowerCase().includes(searchTerm.toLowerCase()),
-    )
-    .sort((a, b) => {
-      let aValue, bValue;
-
-      switch (sortBy) {
-        case "reliability":
-          aValue = a.reliability_score;
-          bValue = b.reliability_score;
-          break;
-        case "transactions":
-          aValue = a.total_transactions;
-          bValue = b.total_transactions;
-          break;
-        case "failure_rate":
-          aValue = a.failure_rate;
-          bValue = b.failure_rate;
-          break;
-        default:
-          aValue = a.reliability_score;
-          bValue = b.reliability_score;
-      }
-
-      return sortOrder === "desc" ? bValue - aValue : aValue - bValue;
-    });
+  const paginatedAnchors = filteredAndSortedAnchors.slice(startIndex, endIndex);
 
   const {
     currentPage,
@@ -649,5 +654,19 @@ function AnchorsContent() {
         )}
       </div>
     </MainLayout>
+  );
+}
+
+export default function AnchorsPage() {
+  return (
+    <Suspense fallback={
+      <MainLayout>
+        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto flex items-center justify-center h-64">
+          <Loader className="w-8 h-8 animate-spin text-blue-500" />
+        </div>
+      </MainLayout>
+    }>
+      <AnchorsPageContent />
+    </Suspense>
   );
 }
