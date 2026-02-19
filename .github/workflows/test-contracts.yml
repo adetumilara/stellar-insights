@@ -22,7 +22,7 @@ jobs:
     
     - name: Install Soroban CLI
       run: |
-        cargo install --locked soroban-cli --features opt
+        cargo install --locked soroban-cli
     
     - name: Cache dependencies
       uses: actions/cache@v3
@@ -30,8 +30,8 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          contracts/target
+        key: ${{ runner.os }}-cargo-contracts-${{ hashFiles('**/Cargo.lock') }}
     
     - name: Run contract tests
       run: |

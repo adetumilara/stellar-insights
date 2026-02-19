@@ -1,113 +1,202 @@
-"use client";
+"use client"
 
-import React, { useEffect, useState, useCallback } from "react";
-import { SkeletonMetricsCard } from '@/components/ui/Skeleton'
-import { KpiCard } from '@/components/dashboard/KpiCard'
-import { SettlementSpeedCard } from '@/components/dashboard/SettlementSpeedCard'
-import { LiquidityDepthCard } from '@/components/dashboard/LiquidityDepthCard'
-import { CorridorHealthCard } from '@/components/dashboard/CorridorHealthCard'
-import { TopAssetsCard } from '@/components/dashboard/TopAssetsCard'
+import React, { useEffect, useState } from 'react';
+import { MetricCard } from '@/components/dashboard/MetricCard';
+import { CorridorHealth } from '@/components/dashboard/CorridorHealth';
+import { LiquidityChart } from '@/components/dashboard/LiquidityChart';
+import { TopAssetsTable } from '@/components/dashboard/TopAssetsTable';
+import { SettlementSpeedChart } from '@/components/dashboard/SettlementSpeedChart';
 
-type Corridor = {
+interface CorridorData {
   id: string;
-  health: number;
-  successRate: number;
-};
+  name: string;
+  status: 'optimal' | 'degraded' | 'down';
+  uptime: number;
+  volume24h: number;
+}
 
-type TopAsset = {
-  asset: string;
-  volume: number;
-  tvl: number;
-};
+interface LiquidityData {
+  date: string;
+  value: number;
+}
 
-type TimePoint = {
-  ts: string;
-  successRate: number;
-  settlementMs: number;
-  tvl: number;
-};
+interface AssetData {
+  symbol: string;
+  name: string;
+  volume24h: number;
+  price: number;
+  change24h: number;
+}
 
-type DashboardData = {
-  totalSuccessRate: number;
-  activeCorridors: Corridor[];
-  topAssets: TopAsset[];
-  timeseries: TimePoint[];
-};
+interface SettlementData {
+  time: string;
+  speed: number;
+}
+
+interface DashboardData {
+  kpi: {
+    successRate: { value: number; trend: number; trendDirection: 'up' | 'down' };
+    activeCorridors: { value: number; trend: number; trendDirection: 'up' | 'down' };
+    liquidityDepth: { value: number; trend: number; trendDirection: 'up' | 'down' };
+    settlementSpeed: { value: number; trend: number; trendDirection: 'up' | 'down' };
+  };
+  corridors: CorridorData[];
+  liquidity: LiquidityData[];
+  assets: AssetData[];
+  settlement: SettlementData[];
+}
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/dashboard");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setData(json);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load");
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/dashboard');
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        const isNetworkError = err instanceof TypeError &&
+          (err.message.includes('Failed to fetch') ||
+            err.message.includes('fetch is not defined') ||
+            err.message.includes('Network request failed'));
+
+        const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+        setError(errorMessage);
+
+        if (!isNetworkError) {
+          console.error("Dashboard API error:", err);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  useEffect(() => {
-    fetchData();
-    const id = setInterval(fetchData, 30_000); // refresh every 30s
-    return () => clearInterval(id);
-  }, [fetchData]);
+  if (loading) {
+    return (
+      <div className="flex h-[80vh] items-center justify-center">
+        <div className="text-sm font-mono text-accent animate-pulse uppercase tracking-widest">Initialising Terminal... // System Handshake</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-[80vh] items-center justify-center">
+        <div className="px-6 py-4 glass border-red-500/50 text-red-500 font-mono text-sm uppercase tracking-widest">
+          Terminal Error: {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const formatVolume = (val: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      notation: 'compact',
+      maximumFractionDigits: 1
+    }).format(val);
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Network Dashboard</h1>
-        <div className="flex gap-2 items-center">
-          <button
-            className="px-3 py-1 rounded bg-sky-600 text-white text-sm"
-            onClick={() => fetchData()}
-            disabled={loading}
-          >
-            Refresh
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/50 pb-6">
+        <div>
+          <div className="text-[10px] font-mono text-accent uppercase tracking-[0.2em] mb-2">Intelligence Terminal // 01</div>
+          <h2 className="text-4xl font-black tracking-tighter uppercase italic">Network Overview</h2>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="px-4 py-2 glass rounded-lg text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+            Last Update: {new Date().toLocaleTimeString()}
+          </div>
+          <button className="px-4 py-2 bg-accent text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:scale-105 transition-transform">
+            Refresh Node
           </button>
         </div>
       </div>
 
-        {loading && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <SkeletonMetricsCard className="col-span-1" />
-            <SkeletonMetricsCard className="col-span-1 lg:col-span-2" />
-            <SkeletonMetricsCard className="col-span-1 lg:col-span-2" />
-            <SkeletonMetricsCard className="col-span-1" />
-            <SkeletonMetricsCard className="col-span-1 lg:col-span-2" />
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          label="Payment Success Rate"
+          value={`${data.kpi.successRate.value}%`}
+          trend={data.kpi.successRate.trend}
+          trendDirection={data.kpi.successRate.trendDirection}
+        />
+        <MetricCard
+          label="Active Corridors"
+          value={data.kpi.activeCorridors.value}
+          trend={data.kpi.activeCorridors.trend}
+          trendDirection={data.kpi.activeCorridors.trendDirection}
+        />
+        <MetricCard
+          label="Liquidity Depth"
+          value={formatVolume(data.kpi.liquidityDepth.value)}
+          trend={data.kpi.liquidityDepth.trend}
+          trendDirection={data.kpi.liquidityDepth.trendDirection}
+        />
+        <MetricCard
+          label="Avg Settlement Speed"
+          value={`${data.kpi.settlementSpeed.value}s`}
+          trend={Math.abs(data.kpi.settlementSpeed.trend)}
+          trendDirection={data.kpi.settlementSpeed.trendDirection}
+          inverse={true} // Lower is better
+        />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-12">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="glass-card rounded-2xl p-1 transition-all duration-300 min-h-[300px] flex flex-col">
+            {data.liquidity.length > 0 ? (
+              <LiquidityChart data={data.liquidity} />
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground font-mono text-xs uppercase tracking-widest">
+                Waiting for Liquidity Data...
+              </div>
+            )}
           </div>
-        )}
-
-      {error && (
-        <div className="rounded p-4 bg-rose-50 text-rose-700">
-          Error: {error}
+          <div className="glass-card rounded-2xl p-1 transition-all duration-300 min-h-[300px] flex flex-col">
+            {data.assets.length > 0 ? (
+              <TopAssetsTable assets={data.assets} />
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground font-mono text-xs uppercase tracking-widest">
+                Waiting for Asset Data...
+              </div>
+            )}
+          </div>
         </div>
-      )}
-
-      {data && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <KpiCard
-            title="Total Payment Success Rate"
-            value={`${(data.totalSuccessRate * 100).toFixed(2)}%`}
-            subtitle="(last 24h)"
-          />
-
-          <SettlementSpeedCard data={data.timeseries} />
-
-          <LiquidityDepthCard data={data.timeseries} />
-
-          <CorridorHealthCard corridors={data.activeCorridors} />
-
-          <TopAssetsCard assets={data.topAssets} />
+        <div className="lg:col-span-4 space-y-6">
+          <div className="glass-card rounded-2xl p-1 transition-all duration-300 min-h-[300px] flex flex-col">
+            {data.corridors.length > 0 ? (
+              <CorridorHealth corridors={data.corridors} />
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground font-mono text-xs uppercase tracking-widest">
+                Waiting for Corridor Data...
+              </div>
+            )}
+          </div>
+          <div className="glass-card rounded-2xl p-1 transition-all duration-300 min-h-[300px] flex flex-col">
+            {data.settlement.length > 0 ? (
+              <SettlementSpeedChart data={data.settlement} />
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground font-mono text-xs uppercase tracking-widest">
+                Waiting for Settlement Data...
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
