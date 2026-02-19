@@ -28,6 +28,9 @@ use stellar_insights_backend::websocket::WsState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Track shutdown start time for logging
+    let shutdown_start = std::time::Instant::now();
+
     // Load environment variables
     dotenv().ok();
 
@@ -39,6 +42,18 @@ async fn main() -> Result<()> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
+
+    tracing::info!("Starting Stellar Insights Backend");
+
+    // Initialize shutdown coordinator
+    let shutdown_config = ShutdownConfig::from_env();
+    tracing::info!(
+        "Shutdown configuration: graceful_timeout={:?}, background_timeout={:?}, db_timeout={:?}",
+        shutdown_config.graceful_timeout,
+        shutdown_config.background_task_timeout,
+        shutdown_config.db_close_timeout
+    );
+    let shutdown_coordinator = Arc::new(ShutdownCoordinator::new(shutdown_config));
 
     // Database connection
     let database_url =
@@ -181,6 +196,7 @@ async fn main() -> Result<()> {
                 }
             }
         }
+        tracing::info!("Background sync task stopped");
     });
     */
 
