@@ -5,7 +5,7 @@ export async function GET() {
 
   try {
     // Fetch data in parallel
-    const [corridorsRes, ledgerRes, paymentsRes] = await Promise.all([
+    const [corridorsRes /* ledgerRes, paymentsRes */] = await Promise.all([
       fetch(`${BACKEND_URL}/api/corridors`, { cache: 'no-store' }),
       fetch(`${BACKEND_URL}/api/rpc/ledger/latest`, { cache: 'no-store' }),
       fetch(`${BACKEND_URL}/api/rpc/payments?limit=50`, { cache: 'no-store' }),
@@ -15,9 +15,9 @@ export async function GET() {
     if (!corridorsRes.ok) throw new Error(`Corridors API failed: ${corridorsRes.status}`);
 
     const corridors = await corridorsRes.json();
-    const ledger = ledgerRes.ok ? await ledgerRes.json() : null;
-    const paymentsData = paymentsRes.ok ? await paymentsRes.json() : { _embedded: { records: [] } };
-    const recentPayments = paymentsData._embedded?.records || [];
+    // const ledger = ledgerRes.ok ? await ledgerRes.json() : null;
+    // const paymentsData = paymentsRes.ok ? await paymentsRes.json() : { _embedded: { records: [] } };
+    // const recentPayments = paymentsData._embedded?.records || [];
 
     // --- Aggregation Logic ---
 
@@ -26,15 +26,15 @@ export async function GET() {
 
     // Success Rate (Average of all corridors)
     const avgSuccessRate = totalCorridors > 0
-      ? corridors.reduce((acc: number, c: any) => acc + (c.success_rate || 0), 0) / totalCorridors
+      ? corridors.reduce((acc: number, c: Record<string, unknown>) => acc + ((c.success_rate as number) || 0), 0) / totalCorridors
       : 0;
 
     // Liquidity Depth (Sum of volume/liquidity from corridors as a proxy)
-    const totalLiquidity = corridors.reduce((acc: number, c: any) => acc + (c.total_volume_usd || 0), 0);
+    const totalLiquidity = corridors.reduce((acc: number, c: Record<string, unknown>) => acc + ((c.total_volume_usd as number) || 0), 0);
 
     // Settlement Speed (Average from corridors)
     const avgSettlementMs = totalCorridors > 0
-      ? corridors.reduce((acc: number, c: any) => acc + (c.avg_settlement_time_ms || 0), 0) / totalCorridors
+      ? corridors.reduce((acc: number, c: Record<string, unknown>) => acc + ((c.avg_settlement_time_ms as number) || 0), 0) / totalCorridors
       : 0;
 
     const kpiData = {

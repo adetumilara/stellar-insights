@@ -7,7 +7,7 @@ import {
   Filter,
   Grid3x3,
   List,
-  Droplets,
+  // Droplets,
   CheckCircle2,
   AlertCircle,
   ArrowRight,
@@ -20,8 +20,8 @@ import {
   CorridorMetrics,
 } from "@/lib/api";
 import { mockCorridors } from "@/components/lib//mockCorridorData";
-import { MainLayout } from "@/components/layout";
-import { SkeletonCorridorCard } from "@/components/ui/Skeleton";
+// import { MainLayout } from "@/components/layout";
+// import { SkeletonCorridorCard } from "@/components/ui/Skeleton";
 import { CorridorHeatmap } from "@/components/charts/CorridorHeatmap";
 import { DataTablePagination } from "@/components/ui/DataTablePagination";
 import { usePagination } from "@/hooks/usePagination";
@@ -35,14 +35,14 @@ function CorridorsPageContent() {
     "success_rate" | "health_score" | "liquidity"
   >("health_score");
   // Filter state variables
-  const [successRateRange, setSuccessRateRange] = useState<[number, number]>([0, 100]);
-  const [volumeRange, setVolumeRange] = useState<[number, number]>([0, 10000000]);
-  const [assetCodeFilter, setAssetCodeFilter] = useState("");
-  const [timePeriod, setTimePeriod] = useState("7d");
+  const [successRateRange /* setSuccessRateRange */] = useState<[number, number]>([0, 100]);
+  const [volumeRange /* setVolumeRange */] = useState<[number, number]>([0, 10000000]);
+  const [assetCodeFilter /* setAssetCodeFilter */] = useState("");
+  const [timePeriod /* setTimePeriod */] = useState("7d");
   const [showFilters, setShowFilters] = useState(false);
 
   // Filter presets state
-  const [filterPresets, setFilterPresets] = useState<Array<{
+  const [/* filterPresets, setFilterPresets */] = useState<Array<{
     name: string;
     filters: {
       successRateRange: [number, number];
@@ -53,7 +53,7 @@ function CorridorsPageContent() {
       sortBy: "success_rate" | "health_score" | "liquidity";
     };
   }>>([]);
-  const [presetName, setPresetName] = useState("");
+  const [/* presetName, setPresetName */] = useState("");
 
   const filteredCorridors = useMemo(() => {
     return corridors
@@ -118,29 +118,29 @@ function CorridorsPageContent() {
 
   const paginatedCorridors = filteredCorridors.slice(startIndex, endIndex);
 
-  const getHealthColor = (score: number) => {
-    if (score >= 90)
-      return "bg-green-50 dark:bg-green-900/20 border-green-500/50 text-green-600 dark:text-green-400";
-    if (score >= 75)
-      return "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500/50 text-yellow-600 dark:text-yellow-400";
-    return "bg-red-50 dark:bg-red-900/20 border-red-500/50 text-red-600 dark:text-red-400";
-  };
+  // const getHealthColor = (score: number) => {
+  //   if (score >= 90)
+  //     return "bg-green-50 dark:bg-green-900/20 border-green-500/50 text-green-600 dark:text-green-400";
+  //   if (score >= 75)
+  //     return "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500/50 text-yellow-600 dark:text-yellow-400";
+  //   return "bg-red-50 dark:bg-red-900/20 border-red-500/50 text-red-600 dark:text-red-400";
+  // };
 
-  const getHealthStatus = (
-    score: number,
-  ): { label: string; icon: string; color: string } => {
-    if (score >= 90)
-      return { label: "Robust", icon: "🟢", color: "text-green-500" };
-    if (score >= 75)
-      return { label: "Moderate", icon: "🟡", color: "text-yellow-500" };
-    return { label: "Fragile", icon: "🔴", color: "text-red-500" };
-  };
+  // const getHealthStatus = (
+  //   score: number,
+  // ): { label: string; icon: string; color: string } => {
+  //   if (score >= 90)
+  //     return { label: "Robust", icon: "🟢", color: "text-green-500" };
+  //   if (score >= 75)
+  //     return { label: "Moderate", icon: "🟡", color: "text-yellow-500" };
+  //   return { label: "Fragile", icon: "🔴", color: "text-red-500" };
+  // };
 
-  const getSuccessStatusIcon = (rate: number) => {
-    if (rate >= 90) return <CheckCircle2 className="w-5 h-5 text-green-500" />;
-    if (rate >= 75) return <TrendingUp className="w-5 h-5 text-yellow-500" />;
-    return <AlertCircle className="w-5 h-5 text-red-500" />;
-  };
+  // const getSuccessStatusIcon = (rate: number) => {
+  //   if (rate >= 90) return <CheckCircle2 className="w-5 h-5 text-green-500" />;
+  //   if (rate >= 75) return <TrendingUp className="w-5 h-5 text-yellow-500" />;
+  //   return <AlertCircle className="w-5 h-5 text-red-500" />;
+  // };
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Page Header */}

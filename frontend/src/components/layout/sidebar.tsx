@@ -9,10 +9,10 @@ import {
   Compass,
   Settings,
   Activity,
-  Zap,
+  // Zap,
   ChevronLeft,
   ChevronRight,
-  Database,
+  // Database,
   LayoutDashboard,
   Waves,
   Droplets,
@@ -34,7 +34,7 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-export function Sidebar({ open, onClose }: SidebarProps = {}) {
+export function Sidebar({ /* open, onClose */ }: SidebarProps = {}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 

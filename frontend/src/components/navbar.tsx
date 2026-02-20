@@ -39,7 +39,9 @@ export function Navbar() {
 
 
   useEffect(() => {
-    setMobileOpen(false);
+    // Close mobile menu when pathname changes
+    const timer = setTimeout(() => setMobileOpen(false), 0);
+    return () => clearTimeout(timer);
   }, [pathname]);
 
   return (

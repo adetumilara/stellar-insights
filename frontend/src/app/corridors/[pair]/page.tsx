@@ -14,6 +14,8 @@ import {
   BarChart3,
   ChevronRight,
   Home,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import {
   getCorridorDetail,
@@ -31,6 +33,7 @@ import {
 import { MainLayout } from "@/components/layout";
 import Link from "next/link";
 import { Skeleton, SkeletonText, SkeletonCard } from "@/components/ui/Skeleton";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 export default function CorridorDetailPage() {
   const params = useParams();
@@ -40,6 +43,50 @@ export default function CorridorDetailPage() {
   const [data, setData] = useState<CorridorDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // WebSocket connection for real-time updates
+  const wsUrl = typeof window !== 'undefined' 
+    ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
+    : '';
+  
+  const { isConnected, lastMessage, send } = useWebSocket(wsUrl);
+
+  // Subscribe to this specific corridor when connected
+  useEffect(() => {
+    if (isConnected && corridorPair) {
+      send({
+        type: 'subscribe',
+        channels: [`corridor:${corridorPair}`]
+      });
+    }
+  }, [isConnected, corridorPair, send]);
+
+  // Handle real-time corridor updates
+  useEffect(() => {
+    if (!lastMessage || !data) return;
+    
+    if (lastMessage.type === 'corridor_update') {
+      const update = lastMessage as { type: 'corridor_update'; data: Record<string, unknown> };
+      const corridorData = update.data as { corridor_key?: string; [key: string]: unknown };
+      
+      // Update corridor data if it matches our current corridor
+      if (corridorData.corridor_key === corridorPair) {
+        setData(prevData => {
+          if (!prevData) return prevData;
+          return {
+            ...prevData,
+            corridor: {
+              ...prevData.corridor,
+              // Update with real-time data
+              last_updated: new Date().toISOString(),
+              // Add any other fields that come from the WebSocket update
+              ...corridorData
+            }
+          };
+        });
+      }
+    }
+  }, [lastMessage, corridorPair, data]);
 
   useEffect(() => {
     async function fetchData() {
@@ -177,14 +224,29 @@ export default function CorridorDetailPage() {
                 Pair: {corridorPair}
               </p>
             </div>
-            <div className="flex items-center gap-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700">
-              <div className="text-right">
-                <div className={`text-3xl font-bold ${healthColor}`}>
-                  {corridor.health_score.toFixed(1)}
+            <div className="flex items-center gap-4">
+              {/* WebSocket Connection Status */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                {isConnected ? (
+                  <Wifi className="w-4 h-4 text-green-500" />
+                ) : (
+                  <WifiOff className="w-4 h-4 text-red-500" />
+                )}
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  {isConnected ? 'Live' : 'Offline'}
+                </span>
+              </div>
+              
+              {/* Health Score */}
+              <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700">
+                <div className="text-right">
+                  <div className={`text-3xl font-bold ${healthColor}`}>
+                    {corridor.health_score.toFixed(1)}
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">
+                    Health Score
+                  </p>
                 </div>
-                <p className="text-gray-600 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">
-                  Health Score
-                </p>
               </div>
             </div>
           </div>
@@ -343,12 +405,25 @@ export default function CorridorDetailPage() {
 
         {/* Footer Info */}
         <div className="mt-8 p-4 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-600 dark:text-gray-400 text-sm">
-          <p>
-            Last updated: {new Date(corridor.last_updated).toLocaleString()}
-          </p>
-          <p className="mt-2 text-xs">
-            Charts update every 5 minutes with 30-day historical data.
-          </p>
+          <div className="flex justify-between items-center">
+            <div>
+              <p>
+                Last updated: {new Date(corridor.last_updated).toLocaleString()}
+              </p>
+              <p className="mt-2 text-xs">
+                {isConnected 
+                  ? "Real-time updates active. Data refreshes automatically." 
+                  : "Charts update every 5 minutes with 30-day historical data."
+                }
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-xs font-medium">
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </MainLayout>

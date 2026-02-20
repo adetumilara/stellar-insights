@@ -177,8 +177,18 @@ pub async fn update_anchor_metrics(
         )
         .await?;
 
-    // Broadcast the anchor update to WebSocket clients
+    // Broadcast the anchor update to WebSocket clients (immediate)
     broadcast_anchor_update(&app_state.ws_state, &anchor);
+    
+    // Also trigger real-time broadcaster for anchor status changes
+    let anchor_metrics = crate::models::AnchorMetrics {
+        reliability_score: anchor.reliability_score,
+        status: crate::models::AnchorStatus::from_metrics(
+            (anchor.successful_transactions as f64 / anchor.total_transactions as f64) * 100.0,
+            (anchor.failed_transactions as f64 / anchor.total_transactions as f64) * 100.0,
+        ),
+    };
+    app_state.broadcaster.broadcast_anchor_status(anchor_metrics).await;
 
     Ok(Json(anchor))
 }

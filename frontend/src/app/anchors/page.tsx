@@ -16,27 +16,27 @@ const truncateAddress = (address: string) => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
-const getHealthStatusColor = (status: string) => {
-  const normalizedStatus = status.toLowerCase();
-  if (normalizedStatus === "green" || normalizedStatus === "healthy") {
-    return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400";
-  } else if (normalizedStatus === "yellow" || normalizedStatus === "warning") {
-    return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400";
-  } else {
-    return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400";
-  }
-};
+// const getHealthStatusColor = (status: string) => {
+//   const normalizedStatus = status.toLowerCase();
+//   if (normalizedStatus === "green" || normalizedStatus === "healthy") {
+//     return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400";
+//   } else if (normalizedStatus === "yellow" || normalizedStatus === "warning") {
+//     return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400";
+//   } else {
+//     return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400";
+//   }
+// };
 
-const getHealthStatusIcon = (status: string) => {
-  const normalizedStatus = status.toLowerCase();
-  if (normalizedStatus === "green" || normalizedStatus === "healthy") {
-    return "●";
-  } else if (normalizedStatus === "yellow" || normalizedStatus === "warning") {
-    return "●";
-  } else {
-    return "●";
-  }
-};
+// const getHealthStatusIcon = (status: string) => {
+//   const normalizedStatus = status.toLowerCase();
+//   if (normalizedStatus === "green" || normalizedStatus === "healthy") {
+//     return "●";
+//   } else if (normalizedStatus === "yellow" || normalizedStatus === "warning") {
+//     return "●";
+//   } else {
+//     return "●";
+//   }
+// };
 
 const generateMockHistoricalData = (currentScore: number) => {
   const data = [];

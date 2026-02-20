@@ -60,7 +60,7 @@ export function Header({ onMenuToggle, sidebarOpen }: HeaderProps) {
   const handleConnect = async () => {
     try {
       await connectWallet();
-    } catch (error) {
+    } catch {
       showToast({
         type: 'error',
         priority: 'high',
@@ -76,7 +76,7 @@ export function Header({ onMenuToggle, sidebarOpen }: HeaderProps) {
     try {
       disconnectWallet();
       setShowWalletMenu(false);
-    } catch (error) {
+    } catch {
       showToast({
         type: 'error',
         priority: 'medium',

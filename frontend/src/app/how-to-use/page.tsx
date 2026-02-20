@@ -142,7 +142,7 @@ export default function HowToUsePage() {
        <p className="text-sm text-muted-foreground leading-relaxed">
          Enable browser notifications to receive real-time alerts when a monitored corridor
          drops below your success-rate threshold or when a major liquidity event is detected.
-         You can configure alert thresholds on each corridor's detail page.
+         You can configure alert thresholds on each corridor&apos;s detail page.
        </p>
      </section>
 

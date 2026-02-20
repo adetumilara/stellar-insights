@@ -2,9 +2,9 @@ import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CorridorAnalytics } from "@/lib/analytics-api";
 import {
-  TrendingUp,
-  Droplets,
-  Clock,
+  // TrendingUp,
+  // Droplets,
+  // Clock,
   ArrowRight,
   Maximize2,
   Info,

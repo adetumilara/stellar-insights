@@ -10,7 +10,7 @@ import {
   AlertTriangle, 
   Info,
   Trash2,
-  Filter,
+  // Filter,
   Search,
   Calendar,
   X

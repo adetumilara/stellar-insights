@@ -9,16 +9,44 @@ use axum::{
 use dashmap::DashMap;
 use futures::{sink::SinkExt, stream::StreamExt};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::{Duration, Instant},
+};
 use tokio::sync::broadcast;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
-/// WebSocket connection state
+/// WebSocket connection state with metrics
 pub struct WsState {
     /// Map of connection ID to broadcast sender
-    pub connections: DashMap<Uuid, tokio::sync::mpsc::Sender<WsMessage>>,///Broadcast channel for sending messages to all connections
+    pub connections: DashMap<Uuid, tokio::sync::mpsc::Sender<WsMessage>>,
+    /// Map of connection ID to list of subscribed channels
+    pub subscriptions: DashMap<Uuid, Vec<String>>,
+    /// Broadcast channel for sending messages to all connections
     pub tx: broadcast::Sender<WsMessage>,
+    /// Connection metrics
+    pub metrics: WsMetrics,
+}
+
+/// WebSocket connection metrics
+#[derive(Debug, Default)]
+pub struct WsMetrics {
+    /// Total connections ever established
+    pub total_connections: AtomicU64,
+    /// Current active connections
+    pub active_connections: AtomicU64,
+    /// Total messages sent
+    pub messages_sent: AtomicU64,
+    /// Total messages received
+    pub messages_received: AtomicU64,
+    /// Connection errors
+    pub connection_errors: AtomicU64,
+    /// Start time for uptime calculation
+    pub start_time: Instant,
 }
 
 impl WsState {
@@ -26,12 +54,22 @@ impl WsState {
         let (tx, _rx) = broadcast::channel(100);
         Self {
             connections: DashMap::new(),
+            subscriptions: DashMap::new(),
             tx,
+            metrics: WsMetrics {
+                total_connections: AtomicU64::new(0),
+                active_connections: AtomicU64::new(0),
+                messages_sent: AtomicU64::new(0),
+                messages_received: AtomicU64::new(0),
+                connection_errors: AtomicU64::new(0),
+                start_time: Instant::now(),
+            },
         }
     }
 
     /// Broadcast a message to all connected clients
     pub fn broadcast(&self, message: WsMessage) {
+        self.metrics.messages_sent.fetch_add(1, Ordering::Relaxed);
         if let Err(e) = self.tx.send(message) {
             warn!("Failed to broadcast message: {}", e);
         }
@@ -41,6 +79,41 @@ impl WsState {
     pub fn connection_count(&self) -> usize {
         self.connections.len()
     }
+
+    /// Get WebSocket metrics
+    pub fn get_metrics(&self) -> WsMetricsSnapshot {
+        WsMetricsSnapshot {
+            total_connections: self.metrics.total_connections.load(Ordering::Relaxed),
+            active_connections: self.metrics.active_connections.load(Ordering::Relaxed),
+            messages_sent: self.metrics.messages_sent.load(Ordering::Relaxed),
+            messages_received: self.metrics.messages_received.load(Ordering::Relaxed),
+            connection_errors: self.metrics.connection_errors.load(Ordering::Relaxed),
+            uptime_seconds: self.metrics.start_time.elapsed().as_secs(),
+        }
+    }
+
+    /// Subscribe connection to channels
+    pub fn subscribe(&self, id: &Uuid, channels: Vec<String>) {
+        self.subscriptions.insert(*id, channels);
+    }
+
+    /// Unsubscribe connection from given channels (remove those channels)
+    pub fn unsubscribe(&self, id: &Uuid, channels: Vec<String>) {
+        if let Some(mut entry) = self.subscriptions.get_mut(id) {
+            entry.retain(|c| !channels.contains(c));
+        }
+    }
+}
+
+/// WebSocket metrics snapshot for API responses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WsMetricsSnapshot {
+    pub total_connections: u64,
+    pub active_connections: u64,
+    pub messages_sent: u64,
+    pub messages_received: u64,
+    pub connection_errors: u64,
+    pub uptime_seconds: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,6 +149,21 @@ pub enum WsMessage {
     Connected { connection_id: String },
     /// Error message
     Error { message: String },
+    /// Client subscribe to channels
+    Subscribe { channels: Vec<String> },
+    /// Client unsubscribe from channels
+    Unsubscribe { channels: Vec<String> },
+    /// New payment event
+    NewPayment { payment: crate::models::PaymentRecord },
+    /// Health alert
+    HealthAlert { corridor_id: String, severity: String, message: String },
+    /// Connection status notification
+    ConnectionStatus { status: String },
+}
+
+/// WebSocket metrics endpoint
+pub async fn ws_metrics(State(state): State<Arc<WsState>>) -> Json<WsMetricsSnapshot> {
+    Json(state.get_metrics())
 }
 
 #[derive(Debug, Deserialize)]
@@ -126,6 +214,10 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsState>) {
     let connection_id = Uuid::new_v4();
     info!("New WebSocket connection: {}", connection_id);
 
+    // Update metrics
+    state.metrics.total_connections.fetch_add(1, Ordering::Relaxed);
+    state.metrics.active_connections.fetch_add(1, Ordering::Relaxed);
+
     let (sender, receiver) = socket.split();
     let sender = Arc::new(tokio::sync::Mutex::new(sender));
 
@@ -134,6 +226,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsState>) {
 
     // Register the connection
     state.connections.insert(connection_id, tx);
+    // Initialize empty subscription list
+    state.subscriptions.insert(connection_id, Vec::new());
 
     // Subscribe to broadcast messages
     let mut broadcast_rx = state.tx.subscribe();
@@ -154,11 +248,15 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsState>) {
     // Task for receiving messages from client
     let recv_task = {
         let connection_id = connection_id;
+        let state_clone = Arc::clone(&state);
         tokio::spawn(async move {
             let mut receiver = receiver;
             while let Some(Ok(msg)) = receiver.next().await {
                 match msg {
                     Message::Text(text) => {
+                        // Track received message
+                        state_clone.metrics.messages_received.fetch_add(1, Ordering::Relaxed);
+                        
                         if let Ok(ws_msg) = serde_json::from_str::<WsMessage>(&text) {
                             match ws_msg {
                                 WsMessage::Ping { timestamp } => {
@@ -169,8 +267,19 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsState>) {
                                         let _ = sender_guard.send(Message::Text(json)).await;
                                     }
                                 }
+                                WsMessage::Subscribe { channels } => {
+                                    info!("Connection {} subscribe: {:?}", connection_id, channels);
+                                    state_clone.subscribe(&connection_id, channels);
+                                }
+                                WsMessage::Unsubscribe { channels } => {
+                                    info!("Connection {} unsubscribe: {:?}", connection_id, channels);
+                                    state_clone.unsubscribe(&connection_id, channels);
+                                }
+                                WsMessage::Pong { .. } => {
+                                    // ignore
+                                }
                                 _ => {
-                                    warn!("Unexpected message type from client");
+                                    warn!("Unexpected message type from client: {:?}", ws_msg);
                                 }
                             }
                         }
@@ -248,6 +357,11 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsState>) {
 
     // Clean up connection
     state.connections.remove(&connection_id);
+    state.subscriptions.remove(&connection_id);
+    
+    // Update metrics
+    state.metrics.active_connections.fetch_sub(1, Ordering::Relaxed);
+    
     info!(
         "WebSocket connection {} closed. Active connections: {}",
         connection_id,

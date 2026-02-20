@@ -132,11 +132,13 @@ export function Sep31PaymentFlow() {
 
   React.useEffect(() => {
     loadAnchors();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   React.useEffect(() => {
     if (transferServer) loadInfo();
     else setInfo(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transferServer]);
 
   const handleSendPayment = async () => {

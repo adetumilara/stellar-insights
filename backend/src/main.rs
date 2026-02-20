@@ -14,8 +14,6 @@ use stellar_insights_backend::api::anchors_cached::get_anchors;
 use stellar_insights_backend::api::corridors_cached::{get_corridor_detail, list_corridors};
 use stellar_insights_backend::api::cache_stats;
 use stellar_insights_backend::api::metrics_cached;
-use stellar_insights_backend::api::sep24_proxy;
-use stellar_insights_backend::api::sep31_proxy;
 use stellar_insights_backend::auth::AuthService;
 use stellar_insights_backend::auth_middleware::auth_middleware;
 use stellar_insights_backend::cache::{CacheConfig, CacheManager};
@@ -35,6 +33,7 @@ use stellar_insights_backend::rpc_handlers;
 use stellar_insights_backend::rate_limit::{RateLimiter, RateLimitConfig, rate_limit_middleware};
 use stellar_insights_backend::state::AppState;
 use stellar_insights_backend::websocket::WsState;
+use stellar_insights_backend::services::realtime_broadcaster::RealtimeBroadcaster;
 
 
 #[tokio::main]
@@ -103,6 +102,16 @@ async fn main() -> Result<()> {
     let ws_state = Arc::new(WsState::new());
     tracing::info!("WebSocket state initialized");
 
+    // Initialize realtime broadcaster
+    let broadcaster = Arc::new(RealtimeBroadcaster::new(
+        Arc::clone(&ws_state),
+        Arc::clone(&rpc_client),
+        Arc::clone(&cache),
+        Arc::clone(&db),
+    ));
+    // Start broadcaster background task
+    let _ = Arc::clone(&broadcaster).start().await;
+
     // Initialize Data Ingestion Service
     let ingestion_service = Arc::new(DataIngestionService::new(
         Arc::clone(&rpc_client),
@@ -139,6 +148,7 @@ async fn main() -> Result<()> {
         Arc::clone(&db),
         Arc::clone(&ws_state),
         Arc::clone(&ingestion_service),
+        Arc::clone(&broadcaster),
     );
 
     // Create cached state tuple for cached API handlers
@@ -410,6 +420,10 @@ async fn main() -> Result<()> {
         )
         .layer(cors.clone());
 
+    // Create Swagger UI routes
+    let swagger_routes = Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()));
+
     // Merge routers
     let app = Router::new()
         .merge(swagger_routes)
@@ -421,23 +435,14 @@ async fn main() -> Result<()> {
         .merge(fee_bump_routes)
         .merge(lp_routes)
         .merge(cache_routes)
-        .merge(metrics_routes)
-        .merge(
-            sep24_proxy::routes().layer(
-                ServiceBuilder::new().layer(middleware::from_fn_with_state(
-                    rate_limiter.clone(),
-                    rate_limit_middleware,
-                )),
-            ).layer(cors.clone())
-        )
-        .merge(
-            sep31_proxy::routes().layer(
-                ServiceBuilder::new().layer(middleware::from_fn_with_state(
-                    rate_limiter.clone(),
-                    rate_limit_middleware,
-                )),
-            ).layer(cors.clone())
-        );
+        .merge(metrics_routes);
+    // Mount websocket route with its own state and merge into app
+    let ws_router = Router::new()
+        .route("/ws", get(stellar_insights_backend::websocket::ws_handler))
+        .route("/api/ws/metrics", get(stellar_insights_backend::websocket::ws_metrics))
+        .with_state(Arc::clone(&ws_state));
+
+    let app = app.merge(ws_router);
 
     // Start server
     let host = std::env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());

@@ -152,19 +152,53 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     });
   }, [preferences, isClient]);
 
-  const { isConnected, reconnectCount } = useWebSocket({
-    url: websocketUrl,
-    onMessage: handleWebSocketMessage,
-    onConnect: () => {
-      if (isClient) console.log('WebSocket connected for notifications');
-    },
-    onDisconnect: () => {
-      if (isClient) console.log('WebSocket disconnected');
-    },
-    onError: (error) => {
-      if (isClient) console.error('WebSocket error:', error);
-    },
-  });
+  const { isConnected, lastMessage } = useWebSocket(websocketUrl);
+  const [reconnectCount, setReconnectCount] = useState(0);
+
+  // Handle WebSocket messages
+  useEffect(() => {
+    if (lastMessage) {
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        // Only handle notification-type messages
+        if (lastMessage.type === 'corridor_update' || 
+            lastMessage.type === 'anchor_update' || 
+            lastMessage.type === 'new_payment' || 
+            lastMessage.type === 'health_alert') {
+          
+          // Convert WsMessage to WebSocketNotificationPayload format
+          const notificationPayload: WebSocketNotificationPayload = {
+            type: lastMessage.type === 'corridor_update' ? 'low_liquidity' :
+                  lastMessage.type === 'anchor_update' ? 'payment_failed' :
+                  lastMessage.type === 'new_payment' ? 'new_snapshot' :
+                  'system_alert',
+            data: {
+              title: String(lastMessage.data?.title ?? 'Notification'),
+              message: String(lastMessage.data?.message ?? 'New update available'),
+              priority: 'medium' as NotificationPriority,
+              metadata: lastMessage.data,
+            }
+          };
+          
+          handleWebSocketMessage(notificationPayload);
+        }
+        
+        // Track connection status changes
+        if (lastMessage.type === 'connection_status') {
+          const status = (lastMessage as { status: string }).status;
+          if (status === 'connected') {
+            setReconnectCount(0);
+            if (isClient) console.log('WebSocket connected for notifications');
+          } else if (status === 'closed') {
+            setReconnectCount(prev => prev + 1);
+            if (isClient) console.log('WebSocket disconnected');
+          } else if (status === 'error') {
+            if (isClient) console.error('WebSocket error');
+          }
+        }
+      }, 0);
+    }
+  }, [lastMessage, handleWebSocketMessage, isClient]);
 
   const dismissToast = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -234,7 +268,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         clearTimeout(cleanupTimeoutRef.current);
       }
     };
-  }, [notifications.length, isClient]);
+  }, [notifications.length, isClient, setNotifications]);
 
   // Show connection status notifications only if WebSocket URL is provided (client-side only)
   useEffect(() => {

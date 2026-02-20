@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import {
-  ArrowRight,
+  // ArrowRight,
   TrendingUp,
-  Zap,
-  BarChart3,
+  // Zap,
+  // BarChart3,
   Shield,
   Activity,
   ChevronRight,
   Globe,
   Database
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { /* useState */ } from "react";
 import { useWallet } from "../components/lib/wallet-context";
 
 export default function Home() {

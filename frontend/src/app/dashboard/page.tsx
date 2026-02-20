@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from 'react';
+import { useRealtimeCorridors } from '@/hooks/useRealtimeCorridors';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { CorridorHealth } from '@/components/dashboard/CorridorHealth';
 import { LiquidityChart } from '@/components/dashboard/LiquidityChart';
@@ -51,6 +52,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { isConnected: wsConnected, corridors: realtimeCorridors } = useRealtimeCorridors(typeof window !== 'undefined' ? (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws' : '');
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -79,6 +82,26 @@ export default function DashboardPage() {
 
     fetchData();
   }, []);
+
+  // Merge realtime corridor updates into existing data when they arrive
+  useEffect(() => {
+    if (!realtimeCorridors || realtimeCorridors.length === 0) return
+    setData((prev) => {
+      if (!prev) return prev
+      // merge by id
+      const next = { ...prev }
+      const existing = next.corridors || []
+      const merged = [...existing]
+      realtimeCorridors.forEach((rc) => {
+        const corridorData = rc as { id: string; [key: string]: unknown };
+        const idx = merged.findIndex((c) => c.id === corridorData.id)
+        if (idx >= 0) merged[idx] = { ...merged[idx], ...corridorData }
+        else merged.unshift(corridorData as unknown as CorridorData)
+      })
+      next.corridors = merged
+      return next
+    })
+  }, [realtimeCorridors])
 
   if (loading) {
     return (
@@ -117,6 +140,10 @@ export default function DashboardPage() {
           <h2 className="text-4xl font-black tracking-tighter uppercase italic">Network Overview</h2>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className={`w-3 h-3 rounded-full ${wsConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+            <div className="text-xs font-mono uppercase text-muted-foreground">WS {wsConnected ? 'Connected' : 'Disconnected'}</div>
+          </div>
           <div className="px-4 py-2 glass rounded-lg text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
             Last Update: {new Date().toLocaleTimeString()}
           </div>

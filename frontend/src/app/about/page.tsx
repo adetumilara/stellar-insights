@@ -63,7 +63,7 @@ export default function AboutPage() {
 
        <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
          Stellar Insights was created to give institutions, developers, and traders the
-         high-fidelity telemetry they need to operate confidently on the world's fastest
+         high-fidelity telemetry they need to operate confidently on the world&apos;s fastest
          payment network. We move beyond simple transaction counts to surface what actually
          matters — liquidity depth, corridor reliability, and settlement certainty.
        </p>

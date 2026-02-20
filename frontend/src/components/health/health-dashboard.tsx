@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
-import { AlertTriangle, Settings, Activity, ShieldCheck, Zap, Server } from 'lucide-react';
+import { ResponsiveContainer, /* LineChart, Line, XAxis, YAxis, */ Tooltip, AreaChart, Area } from 'recharts';
+import { AlertTriangle, Settings, Activity, ShieldCheck, /* Zap, Server */ } from 'lucide-react';
 import { getAnchors, AnchorMetrics } from '../../lib/api';
 import { Badge } from '@/components/ui/badge';
 import { MetricCard } from '@/components/dashboard/MetricCard';
@@ -36,7 +36,7 @@ const generateRecentFailures = (): FailureRecord[] => {
   const reasons = ['Timeout', 'Insufficient liquidity', 'Path payment failed', 'Network congestion'];
   const corridors = ['USDC-PHP', 'EURC-NGN', 'USDT-KES', 'XLM-USD'];
 
-  return Array.from({ length: Math.floor(Math.random() * 5) + 1 }, (_, i) => ({
+  return Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => ({
     timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString(),
     reason: reasons[Math.floor(Math.random() * reasons.length)],
     corridor: corridors[Math.floor(Math.random() * corridors.length)]
@@ -46,7 +46,7 @@ const generateRecentFailures = (): FailureRecord[] => {
 const HealthDashboard = () => {
   const [anchors, setAnchors] = useState<AnchorMetrics[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [alertThresholds, setAlertThresholds] = useState<AlertThreshold>({
     healthScore: 85,
     uptimePercentage: 95,

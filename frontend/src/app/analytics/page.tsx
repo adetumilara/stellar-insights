@@ -2,13 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  TrendingUp,
-  Activity,
+  // TrendingUp,
+  // Activity,
   AlertCircle,
   RefreshCw,
-  Download,
+  // Download,
 } from "lucide-react";
-import Link from "next/link";
+// import Link from "next/link";
 import { fetchAnalyticsMetrics, AnalyticsMetrics } from "@/lib/analytics-api";
 import { LiquidityChart } from "@/components/charts/LiquidityChart";
 import { TVLChart } from "@/components/charts/TVLChart";

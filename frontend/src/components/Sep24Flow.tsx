@@ -107,6 +107,7 @@ export function Sep24Flow() {
 
   React.useEffect(() => {
     loadAnchors();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   React.useEffect(() => {
@@ -115,6 +116,7 @@ export function Sep24Flow() {
     } else {
       setInfo(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAnchor, customTransferServer, flowKind]);
 
   const transferServer = selectedAnchor?.transfer_server || customTransferServer?.trim();

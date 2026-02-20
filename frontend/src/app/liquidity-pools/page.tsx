@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Waves,
+  // Waves,
   Droplets,
   TrendingUp,
   BarChart3,
-  ArrowUpRight,
+  // ArrowUpRight,
   ArrowDownRight,
   Percent,
-  DollarSign,
+  // DollarSign,
   Activity,
   ChevronDown,
 } from "lucide-react";
